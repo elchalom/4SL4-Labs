@@ -1,0 +1,13 @@
+# Keep everything in-memory (lightweight). Plots are written by the nodes to paths in params.
+datasets:
+  type: MemoryDataSet
+
+degree_sweep_result:
+  type: kedro_datasets.memory.MemoryDataSet
+
+ridge_sweep_result:
+  type: kedro_datasets.memory.MemoryDataSet
+
+best_model_summary:
+  type: JSONDataSet
+  filepath: data/08_reporting/best_model_summary.json
