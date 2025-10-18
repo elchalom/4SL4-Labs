@@ -13,17 +13,11 @@ N_FOLDS = 5
  
 class Model:
     def __init__(self, seed: int = SEED, noise_std: float = NOISE_STD):
-        """
-        Builds the model object and generates the datasets.
-        The datasets are accessible as:
-          self.x_training_set, self.t_training_set  (N_TRAIN)
-          self.x_test_set, self.t_test_set          (N_TEST)
-        """
+        
         self.seed = seed
         self.noise_std = noise_std
         np.random.seed(self.seed)
 
-        # Generate training and test datasets per assignment
         self.x_training_set = self.generate_set(N_TRAIN)
         self.t_training_set = self.generate_targets(self.x_training_set)
 
@@ -40,15 +34,10 @@ class Model:
         self.test_rmse_best: float = np.inf
         self.t_test_pred_best: np.ndarray = None
 
-    # -----------------------
-    # Data generation helpers
-    # -----------------------
-    @staticmethod
     def generate_set(N: int, lower_bound: float = 0.0, upper_bound: float = 1.0) -> np.ndarray:
         """Return N evenly spaced x values in [lower_bound, upper_bound]."""
         return np.linspace(lower_bound, upper_bound, N)
 
-    @staticmethod
     def f_opt(x: np.ndarray) -> np.ndarray:
         """True function f_opt(x) = sin(2*pi*x)."""
         return np.sin(2 * np.pi * x)
@@ -57,16 +46,7 @@ class Model:
         """Generate noisy targets t = sin(2πx) + Gaussian noise (std = noise_std)."""
         return self.f_opt(x) + self.noise_std * np.random.randn(len(x))
 
-    # -----------------------
-    # k-NN prediction
-    # -----------------------
-    @staticmethod
     def knn_predict(x_train: np.ndarray, t_train: np.ndarray, x_query: np.ndarray, k: int) -> np.ndarray:
-        """
-        Vectorized k-NN for 1D x.
-        Returns predictions for x_query using x_train/t_train and averaging k nearest neighbors.
-        """
-        # pairwise absolute distances: shape (N_query, N_train)
         dists = np.abs(x_query[:, None] - x_train[None, :])
         # argsort along train axis -> indices of neighbors
         idx_sorted = np.argsort(dists, axis=1)
