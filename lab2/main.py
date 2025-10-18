@@ -1,32 +1,16 @@
-"""
-knn_oop.py
-
-k-NN regression with 5-fold cross-validation using an OOP Model structure (based on your original Model class).
-
-Usage:
-- Set SEED (last 4 digits of your student ID in any order) if desired.
-- Run: python knn_oop.py
-- Produces two plots and prints a concise summary for the report.
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
 from typing import Tuple, Dict, List
-
-# -----------------------
-# Configuration
-# -----------------------
-SEED = 4322   # replace with the last 4 digits of your student ID (in any order) if required
-NOISE_STD = 0.2  # variance = 0.04 -> std = 0.2
+ 
+SEED = 4322   
+NOISE_STD = 0.2  
 K_MIN, K_MAX = 1, 60
 N_TRAIN = 201
 N_TEST = 101
 N_FOLDS = 5
-
-# -----------------------
-# Model class (OOP)
-# -----------------------
+ 
 class Model:
     def __init__(self, seed: int = SEED, noise_std: float = NOISE_STD):
         """
