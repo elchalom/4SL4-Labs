@@ -9,6 +9,9 @@ class Model:
         
         self.flat_img_data = self.reshape_image(self.img_data)
     
+        self.centers = None
+        self.labels = None
+        
     @staticmethod    
     def read_image(path: str) -> np.ndarray:
         """Reads an image from the specified path and returns it as a numpy array."""
@@ -65,12 +68,19 @@ class Model:
     @staticmethod
     def update_centers(data: np.ndarray, labels: np.ndarray, k: int) -> np.ndarray:
         """Updates the cluster centers based on the current assignments."""
-        pass
+        centers = np.zeros((k,3))
+        
+        for i in range(k):
+            cluster_pixels = data[labels == i]
+            if len(cluster_pixels) > 0:
+                centers[i] = np.mean(cluster_pixels, axis=0)
+            else:
+                centers[i] = data[np.random.randint(data.shape[0])]
     
-    def reconstruct_image(self, data: np.ndarray, labels: np.ndarray, centers: np.ndarray, img_H: int, img_W: int) -> np.ndarray:
+        return centers
+    
+    def reconstruct_image(self) -> np.ndarray:
         """Reconstructs the image from the clustered data."""
-        reconstructed_data = self.centers[labels]
+        reconstructed_data = self.centers[self.labels]
         reconstructed_image = reconstructed_data.reshape(self.img_H, self.img_W, 3)
         return reconstructed_image  
-    
-    
