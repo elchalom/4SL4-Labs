@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class Model:
-    def __init__(self, img_path: str) -> None:
+    def __init__(self, img_path: str, theta:float = 0.001) -> None:
         self.k_vals = [2,3,10,20,40] 
         self.img_data = self.read_image(img_path)
         self.img_H, self.img_W, _ = self.img_data.shape
@@ -11,6 +11,7 @@ class Model:
     
         self.centers = None
         self.labels = None
+        self.theta = theta
         
     @staticmethod    
     def read_image(path: str) -> np.ndarray:
@@ -84,3 +85,72 @@ class Model:
         reconstructed_data = self.centers[self.labels]
         reconstructed_image = reconstructed_data.reshape(self.img_H, self.img_W, 3)
         return reconstructed_image  
+    
+    def run_model(self, k: int, init_method: str = 'random', max_iters: int = 100) -> dict:
+        """Runs the K-means clustering algorithm for a single k value."""
+        # Initialize centers
+        if init_method == 'random':
+            self.centers = self.initialize_centers_random(k, self.flat_img_data)
+        elif init_method == 'spread':
+            self.centers = self.initialize_centers_spread(k, self.flat_img_data)
+        else:
+            raise ValueError("Invalid initialization method. Choose 'random' or 'spread'.")
+        
+        # Initialize for convergence check
+        rmse_prev = float('inf')
+        iterations = 0
+        
+        # K-means loop
+        while iterations < max_iters:
+            iterations += 1
+            
+            # Assignment step
+            self.labels = self.group_clusters(self.flat_img_data, self.centers)
+            
+            # Update step
+            self.centers = self.update_centers(self.flat_img_data, self.labels, k)
+            
+            # Calculate RMSE
+            reconstructed_image = self.reconstruct_image()
+            rmse_curr = self.calculate_rmse(self.img_data, reconstructed_image)
+            
+            # Check convergence (relative change)
+            if iterations > 1:  # Skip first iteration
+                relative_change = (rmse_prev - rmse_curr) / rmse_prev
+                if relative_change < self.theta:
+                    break
+            
+            rmse_prev = rmse_curr
+        
+        # Store results
+        results = {
+            'k': k,
+            'init_method': init_method,
+            'rmse': rmse_curr,
+            'iterations': iterations,  
+            'reconstructed_image': reconstructed_image,
+            'converged': iterations < max_iters
+        }
+        
+        return results
+                
+                
+if __name__ == "__main__":
+    img_path = 'Panda.jpg'
+    img_name = img_path.split('/')[-1].split('.')[0]
+    model = Model(img_path, theta=0.001)
+    
+    for k in model.k_vals:
+        run_num = 0
+        for init_method in ['random', 'random', 'spread']:
+            run_num += 1
+            results = model.run_model(k, init_method)
+            print(f"K: {results['k']}, Init: {results['init_method']}, RMSE: {results['rmse']:.4f}, "
+                  f"Iterations: {results['iterations']}, Converged: {results['converged']}")
+            
+            # Optionally display the reconstructed image
+            plt.imshow(results['reconstructed_image'])
+            plt.title(f'K={k}, Init={init_method}, RMSE={results["rmse"]:.4f}, Iter={results["iterations"]}')
+            plt.axis('off')
+            # plt.show()
+            plt.savefig(f'results/{img_name}/{img_name}_k{k}_init{init_method}_run{run_num}.png')
