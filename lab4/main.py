@@ -26,9 +26,17 @@ class NeuralNetwork:
         self.weight_decay = weight_decay
         
         self.num_layers = len(layer_sizes)
+        self.weights = []
         
         for i in range(self.num_layers - 1):
-            pass # TODO : Initialize weights and biases here
+            # Initialize weights with 1 extra column for biases
+            w = np.random.rand(layer_sizes[i] + 1, layer_sizes[i+1]) * np.sqrt(2 / layer_sizes[i])
+            
+            
+            # Initialize biases to 0
+            w[0, :] = 0
+            
+            self.weights.append(w)
         
     
     def forward_pass(self, x:np.ndarray) -> np.ndarray:
