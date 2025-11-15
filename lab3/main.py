@@ -62,8 +62,6 @@ class Model:
 
         # Find the index of the closest center for each point
         labels = np.argmin(dists_sq, axis=1)
-
-        # Replace each point’s RGB value with its nearest center’s RGB value
         return labels
             
     @staticmethod
