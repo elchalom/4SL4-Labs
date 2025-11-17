@@ -1,11 +1,48 @@
 from torchvision import datasets
+import torch
 import numpy as np
+import matplotlib.pyplot as plt
 
-train_dataset = datasets.FashionMNIST ( root = './ data' , train =
-        True , download = True )
+np.random.seed(4322)
+torch.manual_seed(4322)
 
-test_dataset = datasets.FashionMNIST ( root = "./ data" , train =
-        False , download = True )
+train_dataset = datasets.FashionMNIST (root='./data', train=True, download=True)
+test_dataset = datasets.FashionMNIST (root="./data", train=False, download=True )
+
+# Prepare data as numpy arrays
+X_train = train_dataset.data.numpy().reshape(-1, 28 * 28).astype('float32') / 255.0
+Y_train = train_dataset.targets.numpy()
+
+X_test = test_dataset.data.numpy().reshape(-1, 28 * 28).astype('float32') / 255.0
+Y_test = test_dataset.targets.numpy()
+
+# Split training into train and validation (80/20)
+validation_size = int(0.2 * X_train.shape[0])
+X_validation, Y_validation = X_train[:validation_size], Y_train[:validation_size]
+X_train, Y_train = X_train[validation_size:], Y_train[validation_size:]
+
+# Save original labels
+Y_train_orig = Y_train
+Y_validation_orig = Y_validation
+Y_test_orig = Y_test
+
+# One-hot encode labels
+def one_hot_encode(labels, num_classes=10):
+    return np.eye(num_classes)[labels]
+
+Y_train = one_hot_encode(Y_train)
+Y_validation = one_hot_encode(Y_validation)
+Y_test = one_hot_encode(Y_test)
+
+# Standardize data
+X_train_mean = X_train.mean(axis=0)
+X_train_std = X_train.std(axis=0)
+X_train_std[X_train_std == 0] = 1  # Avoid division by zero
+
+X_train = (X_train - X_train_mean) / X_train_std
+X_validation = (X_validation - X_train_mean) / X_train_std
+X_test = (X_test - X_train_mean) / X_train_std
+7
 
 def ReLU(z: np.ndarray) -> np.ndarray:
     return np.maximum(0, z)
@@ -34,7 +71,7 @@ class NeuralNetwork:
         
         for i in range(self.num_layers - 1):
             # Initialize weights with 1 extra column for biases
-            w = np.random.rand(layer_sizes[i] + 1, layer_sizes[i+1]) * np.sqrt(2 / layer_sizes[i])
+            w = np.random.randn(layer_sizes[i] + 1, layer_sizes[i+1]) * np.sqrt(2 / layer_sizes[i])
             
             
             # Initialize biases to 0
@@ -154,7 +191,7 @@ class NeuralNetwork:
         results = {
             "train_loss": [],
             "val_loss": [],
-            "train_errror": [],
+            "train_error": [],
             "val_error": []
         }
         
@@ -193,13 +230,148 @@ class NeuralNetwork:
             train_loss = self.compute_loss(train_predictions, Y_train)
             train_error = self.compute_error(train_predictions, Y_train)
             
-            # TODO : Complete validation and results storage
-    
+            val_predictions = self.forward_pass(X_val)
+            val_loss = self.compute_loss(val_predictions, Y_val)
+            val_error = self.compute_error(val_predictions, Y_val)
+            
+            # Store results
+            results["train_loss"].append(train_loss)
+            results["val_loss"].append(val_loss)
+            results["train_error"].append(train_error)
+            results["val_error"].append(val_error)
+                
+            print(f"Epoch {epoch+1}/{epochs} - "
+                    f"Train Loss: {train_loss:.4f}, Train Error: {train_error:.4f} - "
+                    f"Val Loss: {val_loss:.4f}, Val Error: {val_error:.4f}")
         
+            # Early stopping check
+            if val_loss < smallest_val_loss:
+                smallest_val_loss = val_loss
+                epochs_without_improvement = 0
+                # Save the best weights
+                self.best_weights = [w.copy() for w in self.weights]
+                
+            else:
+                epochs_without_improvement += 1
+                
+            if epochs_without_improvement >= early_stopping_threshold:
+                print("Early stopping triggered after {epoch+1} epochs.")
+                # Restore best weights
+                self.weights = self.best_weights
+                break
+            
+        return results    
     
     def predict(self, X:np.ndarray) -> np.ndarray:
-        pass
+        predictions = self.forward_pass(X)
+        return np.argmax(predictions, axis=1)
     
     def evaluate(self, X:np.ndarray, y:np.ndarray) -> float:
-        pass
+        predictions = self.forward_pass(X)
+        loss = self.compute_loss(predictions, y)
+        error = self.compute_error(predictions, y)
         
+        return {
+            'loss': loss,
+            'error': error
+        }
+        
+        
+if __name__ == "__main__":
+    # Train first model (initialization 1)
+    print("=" * 50)
+    print("Training Model 1")
+    print("=" * 50)
+    
+    np.random.seed(3093)
+    nn1 = NeuralNetwork(
+        layer_sizes=[784, 156, 156, 10],
+        alpha=0.01,
+        weight_decay=0.0018738
+    )
+    
+    history1 = nn1.train(
+        X_train=X_train,
+        Y_train=Y_train,
+        X_val=X_validation,
+        Y_val=Y_validation,
+        epochs=100,
+        batch_size=128
+    )
+    
+    # Evaluate on test set
+    test_results1 = nn1.evaluate(X_test, Y_test)
+    print(f"\nModel 1 Test Results:")
+    print(f"  Loss: {test_results1['loss']:.4f}")
+    print(f"  Error: {test_results1['error']:.4f} ({test_results1['error']*100:.2f}%)")
+    
+    # Train second model (initialization 2)
+    print("\n" + "=" * 50)
+    print("Training Model 2")
+    print("=" * 50)
+    
+    np.random.seed(9303)  # Different seed!
+    nn2 = NeuralNetwork(
+        layer_sizes=[784, 156, 156, 10],
+        alpha=0.01,
+        weight_decay=0.0018738
+    )
+    
+    history2 = nn2.train(
+        X_train=X_train,
+        Y_train=Y_train,
+        X_val=X_validation,
+        Y_val=Y_validation,
+        epochs=100,
+        batch_size=128
+    )
+    
+    # Evaluate on test set
+    test_results2 = nn2.evaluate(X_test, Y_test)
+    print(f"\nModel 2 Test Results:")
+    print(f"  Loss: {test_results2['loss']:.4f}")
+    print(f"  Error: {test_results2['error']:.4f} ({test_results2['error']*100:.2f}%)")
+    
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    
+    # Model 1 - Loss
+    axes[0, 0].plot(history1['train_loss'], label='Train')
+    axes[0, 0].plot(history1['val_loss'], label='Validation')
+    axes[0, 0].set_title('Model 1 - Loss')
+    axes[0, 0].set_xlabel('Epoch')
+    axes[0, 0].set_ylabel('Loss')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True)
+    
+    # Model 1 - Error
+    axes[0, 1].plot(history1['train_error'], label='Train')
+    axes[0, 1].plot(history1['val_error'], label='Validation')
+    axes[0, 1].set_title('Model 1 - Error')
+    axes[0, 1].set_xlabel('Epoch')
+    axes[0, 1].set_ylabel('Error Rate')
+    axes[0, 1].legend()
+    axes[0, 1].grid(True)
+    
+    # Model 2 - Loss
+    axes[1, 0].plot(history2['train_loss'], label='Train')
+    axes[1, 0].plot(history2['val_loss'], label='Validation')
+    axes[1, 0].set_title('Model 2 - Loss')
+    axes[1, 0].set_xlabel('Epoch')
+    axes[1, 0].set_ylabel('Loss')
+    axes[1, 0].legend()
+    axes[1, 0].grid(True)
+    
+    # Model 2 - Error
+    axes[1, 1].plot(history2['train_error'], label='Train')
+    axes[1, 1].plot(history2['val_error'], label='Validation')
+    axes[1, 1].set_title('Model 2 - Error')
+    axes[1, 1].set_xlabel('Epoch')
+    axes[1, 1].set_ylabel('Error Rate')
+    axes[1, 1].legend()
+    axes[1, 1].grid(True)
+    
+    plt.tight_layout()
+    plt.savefig('learning_curves.png', dpi=300)
+    plt.show()
+    
+    print("\nTraining complete! Learning curves saved to 'learning_curves.png'")
