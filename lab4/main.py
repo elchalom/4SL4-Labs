@@ -42,7 +42,6 @@ X_train_std[X_train_std == 0] = 1  # Avoid division by zero
 X_train = (X_train - X_train_mean) / X_train_std
 X_validation = (X_validation - X_train_mean) / X_train_std
 X_test = (X_test - X_train_mean) / X_train_std
-7
 
 def ReLU(z: np.ndarray) -> np.ndarray:
     return np.maximum(0, z)
@@ -132,6 +131,8 @@ class NeuralNetwork:
         # Backtrack though all hidden layers
         for i in range (self.num_layers -2, 0, -1):
             # Propagate gradient through weights (exclude bias weights)
+            
+            # dZ = g' . (dZ W^T)
             dZ = dZ @ self.weights[i][1:, :].T
             
             # Apply ReLU derivative
@@ -255,7 +256,7 @@ class NeuralNetwork:
                 epochs_without_improvement += 1
                 
             if epochs_without_improvement >= early_stopping_threshold:
-                print("Early stopping triggered after {epoch+1} epochs.")
+                print(f"Early stopping triggered after {epoch+1} epochs.")
                 # Restore best weights
                 self.weights = self.best_weights
                 break
@@ -283,7 +284,7 @@ if __name__ == "__main__":
     print("Training Model 1")
     print("=" * 50)
     
-    np.random.seed(3093)
+    np.random.seed(4322)
     nn1 = NeuralNetwork(
         layer_sizes=[784, 156, 156, 10],
         alpha=0.01,
@@ -310,7 +311,7 @@ if __name__ == "__main__":
     print("Training Model 2")
     print("=" * 50)
     
-    np.random.seed(9303)  # Different seed!
+    np.random.seed(2234)  # Different for next initialization
     nn2 = NeuralNetwork(
         layer_sizes=[784, 156, 156, 10],
         alpha=0.01,
