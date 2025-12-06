@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from state_discretizer import StateDiscretizer
 
 class ExpectedSARSAAgent:
-    def __init__(self, iht_size=4096, alpha=0.1, gamma=0.99, epsilon=1.0, 
+    def __init__(self, iht_size=8*4096, alpha=0.1, gamma=0.99, epsilon=1.0, 
                  epsilon_min=0.01, epsilon_decay=0.995):
         """
         Initialize Expected SARSA agent.
@@ -22,7 +22,7 @@ class ExpectedSARSAAgent:
             epsilon_decay: Decay rate for epsilon
         """
         # Initialize environment
-        self.env = gym.make('LunarLander-v3')
+        self.env = gym.make('LunarLander-v3', render_mode=None)  # Disable rendering for improved performance
         
         # Initialize state discretizer
         self.state_discretizer = StateDiscretizer(self.env, iht_size=iht_size)
@@ -272,7 +272,7 @@ if __name__ == '__main__':
     num_training_episodes = int(sys.argv[1])
     
     # Train agent
-    agent = ExpectedSARSAAgent()
+    agent = ExpectedSARSAAgent(iht_size=8*4096, epsilon_min=0.050, epsilon_decay=0.9988, alpha=0.041)
     print(f"Training Expected SARSA agent for {num_training_episodes} episodes...")
     agent.train(num_training_episodes)
     print("Training completed.")

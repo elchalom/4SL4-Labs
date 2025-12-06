@@ -15,7 +15,7 @@ def compare_agents_performance():
     
     agents = {
         'Q-Learning': ('qlearning_best.pkl', QLearningAgent),
-        'SARSA': ('sarsa_best.pkl', SARSAAgent),
+        'SARSA': ('sarsa_best148.pkl', SARSAAgent),
         'Expected SARSA': ('expected_sarsa_best.pkl', ExpectedSARSAAgent)
     }
     

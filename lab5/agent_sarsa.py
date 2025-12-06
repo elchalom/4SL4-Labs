@@ -1,4 +1,4 @@
-# agent_qlearning.py
+# agent_sarsa.py
 
 import sys
 import gymnasium as gym
@@ -7,11 +7,11 @@ import pickle
 import matplotlib.pyplot as plt
 from state_discretizer import StateDiscretizer
 
-class QLearningAgent:
+class SARSAAgent:
     def __init__(self, iht_size=4096, alpha=0.1, gamma=0.99, epsilon=1.0, 
                  epsilon_min=0.01, epsilon_decay=0.995):
         """
-        Initialize Q-Learning agent.
+        Initialize SARSA agent.
         
         Args:
             iht_size: Size of the index hash table for tile coding
@@ -23,13 +23,12 @@ class QLearningAgent:
         """
         # Initialize environment
         self.env = gym.make('LunarLander-v3', render_mode=None)  # Disable rendering for improved performance
-        
+                
         # Initialize state discretizer
         self.state_discretizer = StateDiscretizer(self.env, iht_size=iht_size)
         
         # Initialize Q-table (weights for each action)
-        self.q_table = [np.zeros(self.state_discretizer.iht_size) 
-                        for _ in range(4)]
+        self.q_table = np.zeros((4, self.state_discretizer.iht_size), dtype=np.float32)
         
         # Hyperparameters
         self.alpha = alpha / self.state_discretizer.num_tilings
@@ -63,16 +62,18 @@ class QLearningAgent:
             # Exploration: random action
             return np.random.randint(4)
 
-    def update(self, state, action, reward, next_state, done):
+    def update(self, state, action, reward, next_state, next_action, done):
         """
-        Q-Learning update (off-policy).
-        Q(s,a) ← Q(s,a) + α[r + γ·max_a' Q(s',a') - Q(s,a)]
+        SARSA update (on-policy).
+        Q(s,a) ← Q(s,a) + α[r + γ·Q(s',a') - Q(s,a)]
+        where a' is the action actually taken in next_state
         
         Args:
             state: Previous state
             action: Action taken
             reward: Reward received
             next_state: New state
+            next_action: Action actually taken in next_state
             done: Whether episode ended
         """
         state_features = self.state_discretizer.discretize(state)
@@ -81,16 +82,14 @@ class QLearningAgent:
         # Current Q-value
         q_current = sum(self.q_table[action][tile] for tile in state_features)
         
-        # Max Q-value for next state (off-policy: always uses max)
+        # Q-value for next state-action pair (on-policy: uses actual next action)
         if done:
-            q_next_max = 0
+            q_next = 0
         else:
-            q_next_values = [sum(self.q_table[a][tile] for tile in next_state_features) 
-                            for a in range(4)]
-            q_next_max = max(q_next_values)
+            q_next = sum(self.q_table[next_action][tile] for tile in next_state_features)
         
         # TD error
-        td_error = reward + self.gamma * q_next_max - q_current
+        td_error = reward + self.gamma * q_next - q_current
         
         # Update weights
         for tile in state_features:
@@ -109,17 +108,24 @@ class QLearningAgent:
         
         for episode in range(num_episodes):
             state, info = self.env.reset()
+            action = self.select_action(state, testing=False)  # Choose initial action
             total_reward = 0
             done = False
             
             while not done:
-                action = self.select_action(state, testing=False)
+                # Take action
                 next_state, reward, terminated, truncated, info = self.env.step(action)
                 done = terminated or truncated
                 
-                self.update(state, action, reward, next_state, done)
+                # Choose next action (needed for SARSA update)
+                next_action = self.select_action(next_state, testing=False)
                 
+                # SARSA update with next_action
+                self.update(state, action, reward, next_state, next_action, done)
+                
+                # Move to next state-action pair
                 state = next_state
+                action = next_action
                 total_reward += reward
             
             rewards_history.append(total_reward)
@@ -139,10 +145,10 @@ class QLearningAgent:
             if (episode + 1) % 100 == 0:
                 print(f"Episode {episode + 1}, Average Reward: {avg:.2f}, Epsilon: {self.epsilon:.3f}")
                 
-                # Save best model (only when epsilon is low to avoid exploration bias)
+                # Save best model (only when epsilon is low)
                 if avg > self.best_average_reward and self.epsilon < 0.1:
                     self.best_average_reward = avg
-                    self.save_agent('qlearning_best.pkl')
+                    self.save_agent('sarsa_best.pkl')
                     print(f"Best model saved! Average reward: {avg:.2f}")
         
         # Plot training results
@@ -178,7 +184,7 @@ class QLearningAgent:
         avg_reward = np.mean(test_rewards)
         std_reward = np.std(test_rewards)
         
-        print(f"\nTest Results (Q-Learning) over {num_episodes} episodes:")
+        print(f"\nTest Results (SARSA) over {num_episodes} episodes:")
         print(f"Average Reward: {avg_reward:.2f}")
         print(f"Std Dev: {std_reward:.2f}")
         print(f"Min: {np.min(test_rewards):.2f}")
@@ -229,7 +235,7 @@ class QLearningAgent:
         axes[0].axhline(y=100, color='orange', linestyle='--', label='Min Required (100)')
         axes[0].set_xlabel('Episode')
         axes[0].set_ylabel('Reward')
-        axes[0].set_title('Q-Learning: Training Progress')
+        axes[0].set_title('SARSA: Training Progress')
         axes[0].legend()
         axes[0].grid(True, alpha=0.3)
         
@@ -241,21 +247,21 @@ class QLearningAgent:
         axes[1].grid(True, alpha=0.3)
         
         plt.tight_layout()
-        plt.savefig('qlearning_training.png', dpi=300, bbox_inches='tight')
-        print("\nTraining plot saved as 'qlearning_training.png'")
+        plt.savefig('sarsa_training.png', dpi=300, bbox_inches='tight')
+        print("\nTraining plot saved as 'sarsa_training.png'")
         plt.close()
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Usage: python agent_qlearning.py <num_episodes>")
+        print("Usage: python agent_sarsa.py <num_episodes>")
         sys.exit(1)
     
     num_training_episodes = int(sys.argv[1])
     
     # Train agent
-    agent = QLearningAgent(iht_size=4*8192, epsilon_min=0.05, epsilon_decay=0.999, alpha=0.08)
-    print(f"Training Q-Learning agent for {num_training_episodes} episodes...")
+    agent = SARSAAgent(epsilon_min=0.05, epsilon_decay=0.9997, iht_size=4*8192, alpha=0.05, epsilon=1.0)
+    print(f"Training SARSA agent for {num_training_episodes} episodes...")
     agent.train(num_training_episodes)
     print("Training completed.")
     
