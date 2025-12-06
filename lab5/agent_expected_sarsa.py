@@ -272,7 +272,7 @@ if __name__ == '__main__':
     num_training_episodes = int(sys.argv[1])
     
     # Train agent
-    agent = ExpectedSARSAAgent(iht_size=8*4096, epsilon_min=0.050, epsilon_decay=0.9988, alpha=0.041)
+    agent = ExpectedSARSAAgent(iht_size=8*4096, epsilon_min=0.01, epsilon_decay=0.996, alpha=0.1)
     print(f"Training Expected SARSA agent for {num_training_episodes} episodes...")
     agent.train(num_training_episodes)
     print("Training completed.")
